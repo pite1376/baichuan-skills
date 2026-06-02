@@ -26,7 +26,7 @@ Things I actually use every day. Only open-sourced after they proved useful.
 | Name | One-liner | Details |
 |---|---|---|
 | 🏠 [**life-agent-os-builder**](#-life-agent-os-builder) | Build a file-system-based personal life operating system from scratch. Interview first, then build. | [Life-Agent-OS](https://github.com/pite1376/life-agent-os) |
-| 🧠 [**masters**](#-masters) | Analyze life records and decisions using thinking models from Munger, Musk, Wang Yangming, and Zeng Guofan | 5 built-in masters + roundtable + devil's advocate |
+| 🧠 [**masters**](#-masters) | Build your life mentor board — Munger, Musk, Wang Yangming, Zeng Guofan use thinking models to guide your decisions | 5 built-in mentors + roundtable + devil's advocate |
 
 ---
 
@@ -81,23 +81,25 @@ It doesn't just hand you a template. It runs a **5-round deep interview** coveri
 
 ### 🧠 masters (Life Advisory Board)
 
-> *"Not roleplay — thinking model agents."*
+> *"Whoever you want to become, let them be your mentor."*
 
-Analyze life records and decisions using different thinking models. Built-in masters with clear responsibilities:
+Build your own **personal board of life mentors**. Not chatbot-style "master roleplay" — instead, it crystallizes the **thinking models, judgment criteria, and questioning methods** of Munger, Musk, Wang Yangming, Zeng Guofan, and others into a mentor system that continuously accompanies your decision-making.
 
-| Role | Code Name | Responsibility |
-|------|-----------|---------------|
-| Moderator | Socrates | Refine questions, control flow |
-| Risk Officer | Munger | Inverse thinking, identify biases |
-| Breakthrough Officer | Musk | First principles, find efficient solutions |
-| Action Officer | Wang Yangming | Inner truth, mind-action alignment |
-| Long-term Officer | Zeng Guofan | Habits, self-reflection, endurance |
+Built-in mentors with clear responsibilities:
+
+| Role | Code Name | Core Ability |
+|------|-----------|-------------|
+| Moderator | Socrates | Pursue truth, clarify questions, won't let you fool yourself |
+| Risk Mentor | Munger | Inverse thinking, spot biases, tell you where things might break |
+| Breakthrough Mentor | Musk | First principles, decompose constraints, find 10x efficiency |
+| Action Mentor | Wang Yangming | See inner truth, mind-action alignment, find what's really blocking you |
+| Long-term Mentor | Zeng Guofan | Habit building, self-reflection rhythm, help you befriend time |
 
 **Three modes**
 
-- **Single master** — deep analysis on a specific concern
-- **Roundtable** — multiple masters, complementary perspectives
-- **Devil's advocate** — challenges your judgment, exposes self-justification
+- **Single mentor deep dialogue** — go deep with one mentor on a specific concern
+- **Roundtable meeting** — complex life decisions, multiple mentors from different angles
+- **Devil's advocate** — challenges your judgment, exposes where you're self-justifying
 
 **How to trigger**
 
