@@ -7,7 +7,7 @@
 #### 白川开源的 AI Skills 合集 — 个人操作系统 + 人生决策分析
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-2-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-3-10B981?style=for-the-badge)](#-skills)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
 
@@ -27,6 +27,7 @@
 |---|---|---|
 | 🏠 [**life-agent-os-builder**](#-life-agent-os-builder个人操作系统构建器) | 帮你从零搭建一套基于文件系统的个人操作系统，先访谈再建系统 | [Life-Agent-OS 项目](https://github.com/pite1376/life-agent-os) |
 | 🧠 [**masters**](#-masters人生智囊团) | 构建你的人生导师团 — 芒格、马斯克、王阳明、曾国藩用思维模型陪你做决策 | 内置 5 位导师 + 圆桌会议 + 反方挑战 |
+| 🚀 [**agent-project-delivery**](#-agent-project-delivery智能体项目交付流程助手) | 端到端智能体项目交付管理 — 从甲方需求到PRD、TSD、实施计划的全流程管控 | 强制阶段门禁，防止跳阶段 |
 
 ---
 
@@ -121,6 +122,44 @@
 ```
 
 → [SKILL.md](./masters/SKILL.md) · [大师档案](./masters/) · [决策评分机制](./masters/decision-score.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🚀 agent-project-delivery（智能体项目交付流程助手）
+
+> *"不跳阶段，不编内容，每一步都有交接包。"*
+
+端到端智能体项目交付管理 —— 从甲方原始需求到需求澄清、PRD、TSD、实施计划的全流程管控。
+
+不是直接出方案就完事。它会**先判断当前材料所处阶段**，再选择对应流程，并在每个阶段结束时生成交接包和下一阶段判断。
+
+**为什么需要这个**
+
+大部分智能体项目翻车，不是技术不行，是流程混乱：需求没澄清就写PRD，PRD没确认就出TSD，TSD没验证就上实施。这个skill强制阶段门禁，材料不足时返回上一阶段，不允许跳步。
+
+**四个阶段**
+
+| 阶段 | 输入 | 输出 | 门禁条件 |
+|------|------|------|----------|
+| 需求审辨与澄清 | 甲方原始需求/会议纪要 | 需求确认包、Agent适配度判断 | 业务目标、目标用户、核心场景基本明确 |
+| PRD生成 | 已确认需求 | PRD正文、JTBD分析、用户旅程 | 一期范围、任务能力、用户旅程明确 |
+| TSD生成 | 已确认PRD | TSD正文、架构设计、接口方案 | 技术架构、知识库方案、工具调用方案明确 |
+| 实施计划 | 已确认TSD | 任务拆解、测试用例、上线检查表 | 部署方案、运维责任明确 |
+
+**怎么触发**
+
+```
+/agent-project-delivery    # 直接命令
+甲方给了需求，帮我看看    # 自然语言
+写PRD                     # 自然语言
+出技术方案                 # 自然语言
+```
+
+→ [SKILL.md](./agent-project-delivery/agent-project-delivery.md) · [需求澄清流程](./agent-project-delivery/references/01-agent-requirement-clarifier.md) · [PRD生成流程](./agent-project-delivery/references/02-agent-prd-writer.md) · [TSD生成流程](./agent-project-delivery/references/03-agent-tsd-writer.md)
 
 </td></tr>
 </table>
