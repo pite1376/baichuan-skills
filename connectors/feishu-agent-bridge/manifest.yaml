@@ -1,0 +1,51 @@
+name: feishu-agent-bridge
+display_name: 飞书 Agent 外部连接器
+kind: connector
+version: 1.0.0
+status: stable
+
+summary: >
+  独立运行的飞书机器人连接器。通过飞书 WebSocket 接收消息，
+  通过 HTTPS 调用扣子或其他异步 Agent API，再将结果回复到飞书。
+
+purpose:
+  - 将飞书机器人与 Agent 服务解耦
+  - 避免 Agent 托管平台中的 WebSocket 长连接断连
+  - 支持异步任务提交、轮询和最终回复
+  - 支持独立凭证、会话和数据目录
+
+input:
+  channel: feishu
+  event: im.message.receive_v1
+  message_types: [text, post, file, image]
+
+backend:
+  type: async_http_agent
+  supported_examples: [coze, custom_http]
+
+isolation:
+  default: one_instance_one_project
+  session_scope: instance_id_and_chat_id
+  storage: sqlite_or_postgresql
+
+deployment:
+  type: long_running_service
+  recommended: docker
+  requires_inbound_port: false
+  requires_outbound: [https, wss]
+
+configuration:
+  required:
+    - FEISHU_APP_ID
+    - FEISHU_APP_SECRET
+    - COZE_API_BASE_URL
+    - COZE_API_TOKEN
+    - COZE_PROJECT_ID
+
+security:
+  secrets_from_environment: true
+  never_commit_secrets: true
+
+limitations:
+  - 图片直传需要后端平台提供多模态上传协议
+  - 单机 SQLite 适合单实例部署

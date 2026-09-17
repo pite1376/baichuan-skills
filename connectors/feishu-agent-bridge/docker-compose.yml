@@ -1,0 +1,13 @@
+services:
+  feishu-connector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - connector-data:/app/data
+
+volumes:
+  connector-data:

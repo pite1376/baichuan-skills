@@ -1,0 +1,22 @@
+repository:
+  name: baichuan-skills
+  description: 可复用的 AI Skills、Agent 模块、平台连接器和自动化工具集合
+
+items:
+  - path: connectors/feishu-agent-bridge
+    name: feishu-agent-bridge
+    kind: connector
+    summary: 飞书到 Agent 的完整外部连接器方案
+    status: stable
+
+  - path: life-agent-os-builder
+    name: life-agent-os-builder
+    kind: skill
+    summary: 通过访谈构建个人操作系统
+    status: stable
+
+  - path: masters
+    name: masters
+    kind: skill
+    summary: 使用多位导师思维模型辅助人生决策
+    status: stable

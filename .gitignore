@@ -19,6 +19,12 @@ node_modules/
 # Environment
 .env
 .env.local
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+logs/
+dist/
 
 # Misc
 *.swp

@@ -16,6 +16,8 @@
 都是自己实际在用的东西，跑通了才搬出来开源。
 
 - **Skills** — Agent 能直接加载的结构化指令集，Claude Code 等工具可直接使用
+- **Connectors** — 可直接部署的平台连接器，例如将飞书消息转发到 Agent 服务
+- **Modules** — 可被多个项目组合使用的独立代码组件
 
 ---
 
@@ -169,6 +171,23 @@
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request。
+
+## 🔌 Connectors 与 Modules
+
+仓库中可复用内容分为三类：
+
+- `skills/`：给 AI 使用的知识、规则和工作流程；
+- `modules/`：可被多个方案复用的独立代码组件；
+- `connectors/`：可以直接运行和部署的完整平台连接方案。
+
+每个 Connector 都提供 `README.md`、`manifest.yaml`、配置模板和部署说明。
+建议先阅读 [CATALOG.yaml](./CATALOG.yaml) 和对应组件的 `manifest.yaml`，
+再按需读取源码。
+
+当前连接器：
+
+- [feishu-agent-bridge](./connectors/feishu-agent-bridge) — 飞书 WebSocket 接收消息，
+  通过 HTTPS 调用扣子或其他异步 Agent，再回复飞书。
 
 ## 📄 License
 
