@@ -1,0 +1,19 @@
+name: feishu-channel
+display_name: 飞书消息通道
+kind: module
+version: 1.0.0
+status: stable
+summary: 接收、解析和回复飞书消息的可复用通道模块
+purpose:
+  - 维护飞书 WebSocket 长连接
+  - 解析文本、富文本、文件和图片事件
+  - 下载飞书消息资源
+  - 发送文本和富文本回复
+not_responsible_for:
+  - Agent 调用
+  - 任务轮询
+  - 业务 Prompt
+  - 会话数据库
+inputs: [FEISHU_APP_ID, FEISHU_APP_SECRET]
+dependencies: [lark-oapi]
+keywords: [feishu, lark, websocket, message-channel]

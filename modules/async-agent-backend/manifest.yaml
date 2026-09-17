@@ -1,0 +1,21 @@
+name: async-agent-backend
+display_name: 异步 Agent 后端
+kind: module
+version: 1.0.0
+status: stable
+summary: 提交异步 Agent 任务并轮询最终结果
+purpose:
+  - 提交 Agent 异步任务
+  - 轮询任务状态
+  - 处理超时、重试和限流
+  - 提取统一的最终文本回复
+inputs: [prompt, session_id, project_id, api_token, api_base_url]
+outputs: [task_id, status, reply_text]
+not_responsible_for:
+  - 消息接收
+  - 消息回复
+  - 会话存储
+  - 业务逻辑
+supported_backends: [coze, custom_http]
+dependencies: [httpx]
+keywords: [agent, async-run, task-polling, coze, http]

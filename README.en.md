@@ -116,6 +116,24 @@ Built-in mentors with clear responsibilities:
 
 ---
 
+## 🧩 Content Categories
+
+- `skills/` — instructions, knowledge, and workflows for AI agents;
+- `modules/` — reusable medium-grained code components;
+- `connectors/` — complete, deployable integration solutions;
+- `examples/` — minimal composition examples.
+
+See [CATALOG.yaml](./CATALOG.yaml) and each component's `manifest.yaml` for a concise
+description of purpose, inputs, outputs, dependencies, and limitations.
+
+Current connector: [feishu-agent-bridge](./connectors/feishu-agent-bridge)
+
+Current reusable modules:
+
+- [feishu-channel](./modules/feishu-channel)
+- [async-agent-backend](./modules/async-agent-backend)
+- [agent-bridge-runtime](./modules/agent-bridge-runtime)
+
 ## 🤝 Contributing
 
 Issues and Pull Requests are welcome.

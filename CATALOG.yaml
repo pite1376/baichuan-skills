@@ -9,6 +9,48 @@ items:
     summary: 飞书到 Agent 的完整外部连接器方案
     status: stable
 
+  - path: modules/feishu-channel
+    name: feishu-channel
+    kind: module
+    category: messaging
+    summary: 可复用的飞书 WebSocket 消息通道
+    status: stable
+
+  - path: modules/async-agent-backend
+    name: async-agent-backend
+    kind: module
+    category: agent-integration
+    summary: 异步 Agent 提交、轮询和结果提取
+    status: stable
+
+  - path: modules/agent-bridge-runtime
+    name: agent-bridge-runtime
+    kind: module
+    category: runtime
+    summary: 连接器项目隔离、会话和任务状态运行时
+    status: stable
+
+  - path: skills/personal/life-agent-os-builder
+    name: life-agent-os-builder
+    kind: skill
+    category: personal
+    summary: 通过访谈构建个人操作系统
+    status: stable
+
+  - path: skills/personal/masters
+    name: masters
+    kind: skill
+    category: personal
+    summary: 使用多位导师思维模型辅助人生决策
+    status: stable
+
+  - path: skills/agent-development/agent-project-delivery
+    name: agent-project-delivery
+    kind: skill
+    category: agent-development
+    summary: Agent 项目需求、PRD、技术方案和交付流程
+    status: stable
+
   - path: life-agent-os-builder
     name: life-agent-os-builder
     kind: skill

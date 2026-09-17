@@ -16,6 +16,9 @@
 都是自己实际在用的东西，跑通了才搬出来开源。
 
 - **Skills** — Agent 能直接加载的结构化指令集，Claude Code 等工具可直接使用
+- **Modules** — 可被多个项目组合使用的中等粒度代码组件
+- **Connectors** — 可以直接运行和部署的平台连接方案
+- **Examples** — 展示如何组合 Skills、Modules 和 Connectors 的最小示例
 - **Connectors** — 可直接部署的平台连接器，例如将飞书消息转发到 Agent 服务
 - **Modules** — 可被多个项目组合使用的独立代码组件
 
@@ -171,6 +174,26 @@
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request。
+
+## 🧩 内容分类
+
+仓库内容按复用方式分为四类：
+
+- `skills/`：给 AI 使用的知识、规则和工作流程；
+- `modules/`：被多个方案重复使用的功能组件，例如飞书通道、异步 Agent 后端和连接运行时；
+- `connectors/`：拿来就能部署的完整方案；
+- `examples/`：帮助理解和组合组件的最小示例。
+
+建议先阅读 [CATALOG.yaml](./CATALOG.yaml) 和对应目录的 `manifest.yaml`，
+快速了解每个组件的用途、输入输出、依赖和限制。
+
+当前完整连接器：[feishu-agent-bridge](./connectors/feishu-agent-bridge)
+
+当前可复用模块：
+
+- [feishu-channel](./modules/feishu-channel)
+- [async-agent-backend](./modules/async-agent-backend)
+- [agent-bridge-runtime](./modules/agent-bridge-runtime)
 
 ## 🔌 Connectors 与 Modules
 
