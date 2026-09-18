@@ -20,6 +20,26 @@ def _positive_float(name: str, default: float) -> float:
     return value
 
 
+def _positive_int(name: str, default: int) -> int:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"环境变量 {name} 必须是整数") from exc
+    if value <= 0:
+        raise RuntimeError(f"环境变量 {name} 必须大于 0")
+    return value
+
+
+def _boolean(name: str, default: bool) -> bool:
+    raw = os.getenv(name, "true" if default else "false").strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"环境变量 {name} 必须是 true 或 false")
+
+
 @dataclass(frozen=True)
 class Settings:
     feishu_app_id: str
@@ -33,6 +53,10 @@ class Settings:
     request_timeout_seconds: float
     database_path: str
     log_level: str
+    group_context_enabled: bool
+    group_context_max_messages: int
+    group_context_window_seconds: int
+    group_context_max_chars: int
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -54,4 +78,12 @@ class Settings:
             request_timeout_seconds=_positive_float("REQUEST_TIMEOUT_SECONDS", 30),
             database_path=os.getenv("CONNECTOR_DATABASE_PATH", "/app/data/connector.db"),
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+            group_context_enabled=_boolean("GROUP_CONTEXT_ENABLED", True),
+            group_context_max_messages=_positive_int(
+                "GROUP_CONTEXT_MAX_MESSAGES", 20
+            ),
+            group_context_window_seconds=_positive_int(
+                "GROUP_CONTEXT_WINDOW_SECONDS", 1800
+            ),
+            group_context_max_chars=_positive_int("GROUP_CONTEXT_MAX_CHARS", 8000),
         )

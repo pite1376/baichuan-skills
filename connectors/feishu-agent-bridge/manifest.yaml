@@ -6,12 +6,13 @@ status: stable
 
 summary: >
   独立运行的飞书机器人连接器。通过飞书 WebSocket 接收消息，
-  通过扣子 /stream_run SSE 获取流式文本，并持续更新同一张飞书 CardKit 卡片。
+  通过扣子 /stream_run SSE 调用 Agent，并将文本持续更新到飞书 CardKit 2.0 卡片。
 
 purpose:
   - 将飞书机器人与 Agent 服务解耦
   - 避免 Agent 托管平台中的 WebSocket 长连接断连
-  - 支持 SSE 流式文本和最终卡片回复
+  - 支持 SSE 流式输出和 60 秒延迟处理中提示
+  - 支持持久化会话、群聊上下文和 CardKit 降级为普通文本
   - 支持独立凭证、会话和数据目录
 
 input:
@@ -20,8 +21,8 @@ input:
   message_types: [text, post, file, image]
 
 backend:
-  type: streaming_http_agent
-  supported_examples: [coze_stream_run]
+  type: async_stream_http_agent
+  supported_examples: [coze]
 
 isolation:
   default: one_instance_one_project
@@ -49,4 +50,5 @@ security:
 
 limitations:
   - 图片直传需要后端平台提供多模态上传协议
+  - 流式卡片需要飞书 CardKit 权限
   - 单机 SQLite 适合单实例部署

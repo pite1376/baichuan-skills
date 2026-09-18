@@ -1,14 +1,15 @@
 name: agent-bridge-runtime
 display_name: Agent 连接运行时
 kind: module
-version: 1.0.0
+version: 1.1.0
 status: stable
-summary: 管理连接器中的去重、会话隔离和任务状态
+summary: 管理连接器中的去重、持久化会话、群聊上下文和任务状态
 purpose:
   - 消息去重
   - 会话 ID 管理
   - 同实例项目隔离
   - 任务状态持久化
+  - 群聊上下文窗口和游标
 inputs: [message_id, chat_id, task_id, status]
 outputs: [dedup_result, session_id, task_record]
 storage: [sqlite, postgresql, redis]

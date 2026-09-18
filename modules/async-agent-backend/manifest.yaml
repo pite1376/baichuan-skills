@@ -1,14 +1,15 @@
 name: async-agent-backend
 display_name: 异步 Agent 后端
 kind: module
-version: 1.0.0
+version: 1.1.0
 status: stable
-summary: 提交异步 Agent 任务并轮询最终结果
+summary: 调用 Agent /stream_run SSE，并兼容异步任务结果查询
 purpose:
   - 提交 Agent 异步任务
   - 轮询任务状态
   - 处理超时、重试和限流
   - 提取统一的最终文本回复
+  - 解析 SSE 增量和累计快照，避免文本重复
 inputs: [prompt, session_id, project_id, api_token, api_base_url]
 outputs: [task_id, status, reply_text]
 not_responsible_for:
@@ -16,6 +17,6 @@ not_responsible_for:
   - 消息回复
   - 会话存储
   - 业务逻辑
-supported_backends: [coze_stream_run, coze_async_run, custom_http]
+supported_backends: [coze]
 dependencies: [httpx]
 keywords: [agent, async-run, task-polling, coze, http]
