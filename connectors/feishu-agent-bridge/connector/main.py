@@ -12,7 +12,7 @@ import certifi
 # 仍然执行正常 TLS 证书校验，不会关闭 HTTPS/WSS 安全检查。
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
-from connector.coze_client import CozeAPIError, CozeClient
+from connector.coze_client import CozeAPIError, CozeClient, merge_stream_text
 from connector.feishu import FeishuClient, IncomingMessage, extract_file_text, parse_event
 from connector.settings import Settings
 from connector.store import Store
@@ -62,6 +62,7 @@ class Connector:
             await self._handle_serial(msg)
 
     async def _handle_serial(self, msg: IncomingMessage) -> None:
+        card = None
         try:
             if msg.msg_type in {"text", "post"} and NEW_CHAT_RE.fullmatch(
                 re.sub(r"[\s~!！?？。.,，、]+", "", msg.text)
@@ -74,33 +75,60 @@ class Connector:
             prompt = await self._build_prompt(msg)
             if not prompt:
                 return
-            task_id = await self.coze.submit(prompt, self.store.session_id(msg.chat_id))
-            self.store.update_task(msg.message_id, task_id, "submitted")
-            logger.info("已提交扣子任务：message=%s task=%s", msg.message_id, task_id)
-
-            ack_task = asyncio.create_task(self._delayed_ack(msg))
+            session_id = self.store.session_id(msg.chat_id)
+            self.store.update_task(msg.message_id, None, "streaming")
+            card = await asyncio.to_thread(self.feishu.create_streaming_card, msg)
+            content = ""
+            last_flushed = ""
+            last_flush_at = time.monotonic()
+            ack_task = asyncio.create_task(self._delayed_card_ack(card))
             try:
-                result = await self.coze.wait_for_result(
-                    task_id,
-                    self.settings.task_timeout_seconds,
-                    self.settings.poll_interval_seconds,
-                )
+                async with asyncio.timeout(self.settings.task_timeout_seconds):
+                    async for chunk in self.coze.stream(
+                        prompt, session_id, self.settings.task_timeout_seconds
+                    ):
+                        if ack_task is not None:
+                            ack_task.cancel()
+                            ack_task = None
+                        content = merge_stream_text(content, chunk)
+                        now = time.monotonic()
+                        should_flush = (
+                            not last_flushed
+                            or len(content) - len(last_flushed) >= 50
+                            or now - last_flush_at >= 0.4
+                        )
+                        if should_flush:
+                            await asyncio.to_thread(card.update, content)
+                            last_flushed = content
+                            last_flush_at = now
+                if not content.strip():
+                    raise CozeAPIError("Agent 流结束，但没有生成可回复内容")
+                await asyncio.to_thread(card.finish, content)
+                self.store.update_task(msg.message_id, None, "completed")
+            except Exception as exc:
+                try:
+                    await asyncio.to_thread(card.fail, "连接中断，请稍后重试")
+                except Exception:
+                    logger.exception("流式卡片失败状态更新失败")
+                raise
             finally:
-                ack_task.cancel()
-            self.store.update_task(msg.message_id, task_id, "completed")
-            await self._send(msg, result.text)
+                if ack_task is not None:
+                    ack_task.cancel()
         except TimeoutError:
             self.store.update_task(msg.message_id, None, "timeout")
             logger.exception("扣子任务超时：message=%s", msg.message_id)
-            await self._send(msg, "处理超时了，任务可能过于复杂，请拆小后重试。")
+            if card is None:
+                await self._send(msg, "处理超时了，任务可能过于复杂，请拆小后重试。")
         except (CozeAPIError, ValueError, RuntimeError) as exc:
             self.store.update_task(msg.message_id, None, "failed")
             logger.exception("消息处理失败：message=%s", msg.message_id)
-            await self._send(msg, f"处理失败：{exc}")
+            if card is None:
+                await self._send(msg, f"处理失败：{exc}")
         except Exception:
             self.store.update_task(msg.message_id, None, "failed")
             logger.exception("消息处理发生未知异常：message=%s", msg.message_id)
-            await self._send(msg, "处理出错了，请稍后重试。")
+            if card is None:
+                await self._send(msg, "处理出错了，请稍后重试。")
 
     async def _build_prompt(self, msg: IncomingMessage) -> str:
         if msg.msg_type in {"text", "post"}:
@@ -117,18 +145,21 @@ class Connector:
         self.store.update_task(msg.message_id, None, "unsupported")
         return ""
 
-    async def _delayed_ack(self, msg: IncomingMessage) -> None:
-        try:
-            await asyncio.sleep(self.settings.ack_delay_seconds)
-            await self._send(msg, "⏳ 收到，正在处理中，请稍候…")
-        except asyncio.CancelledError:
-            return
-
     async def _send(self, msg: IncomingMessage, text: str) -> None:
         try:
             await asyncio.to_thread(self.feishu.send_text, msg, text)
         except Exception:
             logger.exception("回复飞书消息失败：message=%s", msg.message_id)
+
+    async def _delayed_card_ack(self, card) -> None:
+        """60 秒仍无 Agent 文本时，只更新同一张卡片，不额外发送消息。"""
+        try:
+            await asyncio.sleep(self.settings.ack_delay_seconds)
+            await asyncio.to_thread(card.update, "⏳ 收到，正在处理中，请稍候…")
+        except asyncio.CancelledError:
+            return
+        except Exception:
+            logger.exception("更新流式卡片处理中状态失败")
 
     async def run_async_loop(self) -> None:
         self.loop = asyncio.get_running_loop()

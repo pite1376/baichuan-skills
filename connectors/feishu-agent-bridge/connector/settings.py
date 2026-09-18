@@ -48,11 +48,10 @@ class Settings:
             coze_api_base_url=os.getenv(
                 "COZE_API_BASE_URL", "https://76mwxwmfhb.coze.site"
             ).strip().rstrip("/"),
-            ack_delay_seconds=_positive_float("ACK_DELAY_SECONDS", 15),
+            ack_delay_seconds=_positive_float("ACK_DELAY_SECONDS", 60),
             task_timeout_seconds=_positive_float("TASK_TIMEOUT_SECONDS", 900),
             poll_interval_seconds=_positive_float("POLL_INTERVAL_SECONDS", 2),
             request_timeout_seconds=_positive_float("REQUEST_TIMEOUT_SECONDS", 30),
             database_path=os.getenv("CONNECTOR_DATABASE_PATH", "/app/data/connector.db"),
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
         )
-

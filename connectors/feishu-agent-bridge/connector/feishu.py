@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -15,6 +16,14 @@ from lark_oapi.api.im.v1 import (
     P2ImMessageReceiveV1,
     ReplyMessageRequest,
     ReplyMessageRequestBody,
+)
+from lark_oapi.api.cardkit.v1 import (
+    ContentCardElementRequest,
+    ContentCardElementRequestBody,
+    CreateCardRequest,
+    CreateCardRequestBody,
+    SettingsCardRequest,
+    SettingsCardRequestBody,
 )
 
 logger = logging.getLogger(__name__)
@@ -76,6 +85,127 @@ class FeishuClient:
                     f"飞书发送失败：code={response.code} msg={response.msg}"
                 )
 
+    def create_streaming_card(self, msg: IncomingMessage) -> "StreamingCard":
+        """创建并发送 CardKit 2.0 流式卡片，返回可持续更新的控制器。"""
+        spec = {
+            "schema": "2.0",
+            "config": {
+                "update_multi": True,
+                "width_mode": "default",
+                "streaming_mode": True,
+                "enable_forward": True,
+                "summary": {"content": "Costa PPT 助手正在回复"},
+            },
+            "header": {
+                "title": {"tag": "plain_text", "content": "Costa PPT 助手"},
+                "subtitle": {"tag": "plain_text", "content": "正在生成内容"},
+                "template": "blue",
+                "icon": {"tag": "standard_icon", "token": "myai_colorful"},
+            },
+            "body": {
+                "direction": "vertical",
+                "padding": "12px 12px 20px 12px",
+                "elements": [
+                    {
+                        "tag": "markdown",
+                        "element_id": "stream_md",
+                        "content": "正在连接智能体，请稍候…",
+                    }
+                ],
+            },
+        }
+        create_request = (
+            CreateCardRequest.builder()
+            .request_body(
+                CreateCardRequestBody.builder()
+                .type("card_json")
+                .data(json.dumps(spec, ensure_ascii=False))
+                .build()
+            )
+            .build()
+        )
+        create_response = self.client.cardkit.v1.card.create(create_request)
+        card_id = getattr(getattr(create_response, "data", None), "card_id", "")
+        if not create_response.success() or not card_id:
+            raise RuntimeError(
+                "飞书流式卡片创建失败："
+                f"code={create_response.code} msg={create_response.msg}"
+            )
+        card_content = json.dumps(
+            {"type": "card", "data": {"card_id": card_id}}, ensure_ascii=False
+        )
+        if msg.chat_type == "p2p":
+            send_request = (
+                CreateMessageRequest.builder()
+                .receive_id_type("chat_id")
+                .request_body(
+                    CreateMessageRequestBody.builder()
+                    .receive_id(msg.chat_id)
+                    .msg_type("interactive")
+                    .content(card_content)
+                    .build()
+                )
+                .build()
+            )
+            send_response = self.client.im.v1.message.create(send_request)
+        else:
+            send_request = (
+                ReplyMessageRequest.builder()
+                .message_id(msg.message_id)
+                .request_body(
+                    ReplyMessageRequestBody.builder()
+                    .msg_type("interactive")
+                    .content(card_content)
+                    .build()
+                )
+                .build()
+            )
+            send_response = self.client.im.v1.message.reply(send_request)
+        if not send_response.success():
+            raise RuntimeError(
+                f"飞书流式卡片发送失败：code={send_response.code} msg={send_response.msg}"
+            )
+        return StreamingCard(self, card_id)
+
+    def update_streaming_card(
+        self, card_id: str, content: str, sequence: int
+    ) -> None:
+        request = (
+            ContentCardElementRequest.builder()
+            .card_id(card_id)
+            .element_id("stream_md")
+            .request_body(
+                ContentCardElementRequestBody.builder()
+                .content(content or "…")
+                .sequence(sequence)
+                .build()
+            )
+            .build()
+        )
+        response = self.client.cardkit.v1.card_element.content(request)
+        if not response.success():
+            raise RuntimeError(
+                f"飞书流式卡片更新失败：code={response.code} msg={response.msg}"
+            )
+
+    def finish_streaming_card(self, card_id: str, sequence: int) -> None:
+        request = (
+            SettingsCardRequest.builder()
+            .card_id(card_id)
+            .request_body(
+                SettingsCardRequestBody.builder()
+                .settings(json.dumps({"config": {"streaming_mode": False}}))
+                .sequence(sequence)
+                .build()
+            )
+            .build()
+        )
+        response = self.client.cardkit.v1.card.settings(request)
+        if not response.success():
+            raise RuntimeError(
+                f"飞书流式卡片结束失败：code={response.code} msg={response.msg}"
+            )
+
     def download_resource(self, msg: IncomingMessage, resource_type: str) -> bytes:
         request = (
             GetMessageResourceRequest.builder()
@@ -106,6 +236,40 @@ class FeishuClient:
             log_level=lark.LogLevel.INFO,
         )
         ws_client.start()
+
+
+class StreamingCard:
+    """单元素 CardKit 流式卡片；调用方负责节流，sequence 在此严格递增。"""
+
+    def __init__(self, client: FeishuClient, card_id: str):
+        self.client = client
+        self.card_id = card_id
+        self.sequence = 0
+        self.content = ""
+        self.finished = False
+        self._lock = threading.RLock()
+
+    def update(self, content: str) -> None:
+        with self._lock:
+            if self.finished:
+                return
+            self.sequence += 1
+            self.content = content
+            self.client.update_streaming_card(self.card_id, content, self.sequence)
+
+    def finish(self, content: Optional[str] = None) -> None:
+        with self._lock:
+            if self.finished:
+                return
+            if content is not None and content != self.content:
+                self.update(content)
+            self.sequence += 1
+            self.client.finish_streaming_card(self.card_id, self.sequence)
+            self.finished = True
+
+    def fail(self, message: str) -> None:
+        footer = f"\n\n---\n生成中断：{message}"
+        self.finish((self.content or "暂未生成内容") + footer)
 
 
 def parse_event(data: P2ImMessageReceiveV1) -> Optional[IncomingMessage]:
@@ -189,4 +353,3 @@ def _parse_post_text(content: dict) -> str:
             if item.get("tag") in {"text", "a"}:
                 texts.append(item.get("text", ""))
     return " ".join(filter(None, texts)).strip()
-

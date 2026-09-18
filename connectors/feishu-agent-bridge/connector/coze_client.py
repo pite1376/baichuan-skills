@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -37,6 +38,7 @@ class CozeClient:
         request_timeout: float = 30,
     ):
         self.project_id = project_id
+        self.request_timeout = request_timeout
         self._client = httpx.AsyncClient(
             base_url=base_url,
             headers={
@@ -49,8 +51,8 @@ class CozeClient:
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def submit(self, text: str, session_id: str) -> str:
-        payload = {
+    def _payload(self, text: str, session_id: str) -> dict[str, Any]:
+        return {
             "content": {
                 "query": {
                     "prompt": [
@@ -62,6 +64,9 @@ class CozeClient:
             "session_id": session_id,
             "project_id": self.project_id,
         }
+
+    async def submit(self, text: str, session_id: str) -> str:
+        payload = self._payload(text, session_id)
         data = await self._request_json("POST", "/async_run", json=payload)
         task_id = _find_string(data, ("task_id", "taskId"))
         if not task_id and data.get("id") is not None:
@@ -69,6 +74,56 @@ class CozeClient:
         if not task_id:
             raise CozeAPIError(f"扣子提交响应中没有 task_id：{_safe_json(data)}")
         return task_id
+
+    async def stream(self, text: str, session_id: str, timeout: float):
+        """调用 /stream_run 并产出 Agent 用户可见文本块。"""
+        payload = self._payload(text, session_id)
+        # run_id 每次请求唯一；LangGraph 的 AgentStreamRunner 会从 payload 中
+        # 读取稳定 session_id 作为 thread_id，因此日志/取消与上下文互不混用。
+        request_id = uuid.uuid4().hex
+        headers = {"x-run-id": request_id, "x-request-id": request_id}
+        try:
+            async with self._client.stream(
+                "POST",
+                "/stream_run",
+                json=payload,
+                headers=headers,
+                timeout=httpx.Timeout(
+                    connect=self.request_timeout,
+                    read=timeout,
+                    write=self.request_timeout,
+                    pool=self.request_timeout,
+                ),
+            ) as response:
+                if response.status_code in (401, 403):
+                    raise CozeAPIError("扣子 API 鉴权失败，请检查 COZE_API_TOKEN")
+                if response.status_code >= 400:
+                    body = (await response.aread()).decode(errors="replace")[:1000]
+                    raise CozeAPIError(
+                        f"扣子流式 API 异常：HTTP {response.status_code} {body}"
+                    )
+                data_lines: list[str] = []
+                async for line in response.aiter_lines():
+                    if line.startswith("data:"):
+                        data_lines.append(line[5:].lstrip())
+                        continue
+                    if line == "" and data_lines:
+                        raw = "\n".join(data_lines)
+                        data_lines.clear()
+                        if raw == "[DONE]":
+                            break
+                        error = extract_stream_error(raw)
+                        if error:
+                            raise CozeAPIError(f"扣子流式任务失败：{error}")
+                        chunk = extract_stream_text(raw)
+                        if chunk:
+                            yield chunk
+                if data_lines:
+                    chunk = extract_stream_text("\n".join(data_lines))
+                    if chunk:
+                        yield chunk
+        except (httpx.TransportError, httpx.TimeoutException) as exc:
+            raise CozeAPIError(f"扣子 SSE 连接中断：{exc}") from exc
 
     async def get_task(self, task_id: str) -> dict[str, Any]:
         return await self._request_json("GET", f"/task/{task_id}")
@@ -202,3 +257,98 @@ def extract_reply_text(data: dict[str, Any]) -> str:
         if text:
             return text
     return ""
+
+
+def extract_stream_text(raw: str) -> str:
+    """从常见 Chat/LangGraph SSE 事件中提取单个 AI 文本块。"""
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return ""
+    if not isinstance(data, dict):
+        return ""
+
+    if str(data.get("type") or "").lower() == "answer":
+        content = data.get("content")
+        if isinstance(content, dict):
+            answer = content.get("answer")
+            return answer if isinstance(answer, str) else ""
+
+    choices = data.get("choices")
+    if isinstance(choices, list):
+        for choice in choices:
+            if not isinstance(choice, dict):
+                continue
+            delta = choice.get("delta")
+            if isinstance(delta, dict):
+                text = _stream_content_to_text(delta.get("content"))
+                if text:
+                    return text
+
+    candidates = [data]
+    for key in ("data", "message", "chunk"):
+        value = data.get(key)
+        if isinstance(value, dict):
+            candidates.append(value)
+    for item in candidates:
+        kind = str(
+            item.get("role") or item.get("type") or item.get("message_type") or ""
+        ).lower()
+        if (
+            kind in {"assistant", "ai", "aimessage", "aimessagechunk", "answer"}
+            or "ai_message" in kind
+            or "chat.completion.chunk" in str(data.get("object", "")).lower()
+        ):
+            text = _stream_content_to_text(item.get("content"))
+            if text:
+                return text
+    return ""
+
+
+def _stream_content_to_text(content: Any) -> str:
+    """流式文本不能 strip，否则空格和换行 token 会被吃掉。"""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+        return "".join(parts)
+    return ""
+
+
+def extract_stream_error(raw: str) -> str:
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return ""
+    if not isinstance(data, dict) or str(data.get("type") or "").lower() != "error":
+        return ""
+    content = data.get("content")
+    if isinstance(content, dict):
+        error = content.get("error")
+        if isinstance(error, dict):
+            return str(error.get("message") or error.get("code") or "未知错误")
+        if error:
+            return str(error)
+    return "未知错误"
+
+
+def merge_stream_text(current: str, incoming: str) -> str:
+    """兼容增量 chunk 和累计快照，避免最终完整消息被重复追加。"""
+    if not incoming:
+        return current
+    if incoming.startswith(current):
+        return incoming
+    if current.endswith(incoming):
+        return current
+    max_overlap = min(len(current), len(incoming))
+    for size in range(max_overlap, 0, -1):
+        if current[-size:] == incoming[:size]:
+            return current + incoming[size:]
+    return current + incoming

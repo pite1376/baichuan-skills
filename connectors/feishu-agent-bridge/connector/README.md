@@ -1,7 +1,7 @@
 # 飞书－扣子外部连接器
 
-连接器常驻外部服务器，通过飞书 SDK WebSocket 接收消息，再调用扣子 Agent 的
-`/async_run` 和 `/task/{task_id}` HTTPS API，最后把结果回复到飞书。
+连接器常驻外部服务器，通过飞书 SDK WebSocket 接收消息，调用扣子 Agent 的
+`/stream_run` SSE 接口，并把 Agent 文本持续更新到同一张 CardKit 2.0 卡片。
 
 ## 部署
 
@@ -30,7 +30,11 @@ python -m connector.main
 程序会自动使用 `certifi` CA 根证书验证扣子 HTTPS 和飞书 WSS 连接，不需要关闭
 TLS 证书校验。
 
-真实 `.env.connector` 不得提交到 Git。连接器使用 SQLite 持久化消息去重、任务映射
+流式卡片会立即显示“正在连接智能体”。`ACK_DELAY_SECONDS` 只控制卡片内
+“⏳ 收到，正在处理中”状态的等待时间，默认 60 秒；Agent 一旦开始输出即取消该
+状态更新。“新建对话”等连接器本地回复不经过这个计时器，会继续即时发送。
+
+真实 `.env` 不得提交到 Git。连接器使用 SQLite 持久化消息去重、任务映射
 和会话序号，Docker volume 默认保存于 `connector-data`。
 
 文字、富文本、PDF、DOCX、TXT、MD、CSV、JSON 已支持。当前扣子接口样例没有给出

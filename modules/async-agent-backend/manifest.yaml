@@ -16,6 +16,6 @@ not_responsible_for:
   - 消息回复
   - 会话存储
   - 业务逻辑
-supported_backends: [coze, custom_http]
+supported_backends: [coze_stream_run, coze_async_run, custom_http]
 dependencies: [httpx]
 keywords: [agent, async-run, task-polling, coze, http]
